@@ -68,7 +68,9 @@ public class Snake {
         body.add(new ColorPoint(body.peekLast().getX() + SQ_SIZE, body.peekLast().getY(), randomGrey()));
         body.removeFirst();
     }
-
+    
+    
+    // TODO Move this in Playground, doesn't need to be here
     public boolean verifyMovement(int playgroundWidth, int playgroundHeight, LinkedList<ColorPoint> powerUps) {
         ColorPoint snakeHead = body.getLast();
 
