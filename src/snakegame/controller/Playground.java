@@ -2,6 +2,7 @@ package snakegame.controller;
 
 import snakegame.model.ColorPoint;
 import snakegame.drawutils.PixelNumbers;
+import snakegame.model.Snake;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,11 +12,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.LinkedList;
-import java.util.ListIterator;
 import java.util.Random;
 
-class Playground extends JPanel {
-    private final int
+public class Playground extends JPanel implements Snake.SnakeHost {
+    public static final int
             SQ_SIZE  = 20,
             HALF_SQ  = SQ_SIZE/2,
             QUART_SQ = SQ_SIZE/4,
@@ -29,14 +29,15 @@ class Playground extends JPanel {
 
     private int
             gameSpeed = 100,
-            snakeDir  = RIGHT,
+            snakeDirection = RIGHT,
             score     = 0;
+    
+    private Snake snake;
 
     private boolean hasStarted = false;
     private LinkedList<ColorPoint>
             background = new LinkedList<>(),
-            powerUps   = new LinkedList<>(),
-            theSnake   = new LinkedList<>();
+            powerUps   = new LinkedList<>();
 
     private javax.swing.Timer timer, powerUpTimer;
 
@@ -50,7 +51,7 @@ class Playground extends JPanel {
         /* Timer to control the running speed of the game */
         ActionListener runTheGame = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                moveSnake(snakeDir);
+                moveSnake(snakeDirection);
                 paintComponent(getGraphics());
             }
         };
@@ -63,6 +64,7 @@ class Playground extends JPanel {
                 addPowerUp();
             }
         };
+
         powerUpTimer = new javax.swing.Timer(20 * gameSpeed, powerUpSpawn);
 
         addKeyListener(new KeyAdapter() {
@@ -73,17 +75,17 @@ class Playground extends JPanel {
                 int key = e.getKeyCode();
 
                 if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_Z)
-                        && snakeDir != DOWN)
-                    snakeDir = UP;
+                        && snakeDirection != DOWN)
+                    snakeDirection = UP;
                 else if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)
-                        && snakeDir != UP)
-                    snakeDir = DOWN;
+                        && snakeDirection != UP)
+                    snakeDirection = DOWN;
                 else if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_Q)
-                        && snakeDir != RIGHT)
-                    snakeDir = LEFT;
+                        && snakeDirection != RIGHT)
+                    snakeDirection = LEFT;
                 else if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)
-                        && snakeDir != LEFT)
-                    snakeDir = RIGHT;
+                        && snakeDirection != LEFT)
+                    snakeDirection = RIGHT;
             }
         });
     }
@@ -91,11 +93,37 @@ class Playground extends JPanel {
     @Override
     public void paintComponent(Graphics g) {
         drawAll(g);
-        if (!moveCheck())
+        if (!snake.verifyMovement(getWidth(), getHeight(), powerUps))
             gameOver(g);
     }
 
+    // SnakeHost methods
+
+    @Override
+    public void incrementScore() {
+        score += 1;
+
+        if (score % 10 == 0) {
+            gameSpeed -= gameSpeed / 5;
+            setSpeed(gameSpeed);
+        }
+    }
+
+    @Override
+    public void setDirection(int direction) {
+        snakeDirection = direction;
+    }
+
+    @Override
+    public int getDirection() {
+        return snakeDirection;
+    }
+
+    // Methods
+
     private void init() {
+        snake = new Snake(this);
+        
         /* creates a list of colored points for the background */
         Random r = new Random();
 
@@ -105,12 +133,6 @@ class Playground extends JPanel {
                 background.add(new ColorPoint(
                         i*SQ_SIZE, j*SQ_SIZE, rColor));
             }
-        }
-
-        /* creates a 5 squares long snake */
-        for (int i = 0; i < 5; i++) {
-            theSnake.add(new ColorPoint((10+i) * SQ_SIZE,
-                    15 * SQ_SIZE, randomGrey()));
         }
     }
 
@@ -162,7 +184,7 @@ class Playground extends JPanel {
         }
         else {
             /* Snake buffered paint */
-            for (ColorPoint cp : theSnake) {
+            for (ColorPoint cp : snake.getBody()) {
                 g2dImage.setColor(cp.getColor().brighter());
                 g2dImage.fillRect(cp.getX(), cp.getY(), SQ_SIZE, SQ_SIZE);
             }
@@ -197,77 +219,11 @@ class Playground extends JPanel {
 
     private void moveSnake(int direction) {
         switch(direction) {
-            case UP    : moveUp();    break;
-            case RIGHT : moveRight(); break;
-            case DOWN  : moveDown();  break;
-            case LEFT  : moveLeft();  break;
+            case UP    : snake.up();    break;
+            case RIGHT : snake.right(); break;
+            case DOWN  : snake.down();  break;
+            case LEFT  : snake.left();  break;
         }
-    }
-
-    private void moveUp() {
-        if (snakeDir == DOWN)
-            return;
-
-        theSnake.add(new ColorPoint(theSnake.peekLast().getX(), theSnake.peekLast().getY() - SQ_SIZE, randomGrey()));
-        theSnake.removeFirst();
-    }
-
-    private void moveDown() {
-        if (snakeDir == UP)
-            return;
-
-        theSnake.add(new ColorPoint(theSnake.peekLast().getX(), theSnake.peekLast().getY() + SQ_SIZE, randomGrey()));
-        theSnake.removeFirst();
-    }
-
-    private void moveLeft() {
-        if (snakeDir == RIGHT)
-            return;
-
-        theSnake.add(new ColorPoint(theSnake.peekLast().getX() - SQ_SIZE, theSnake.peekLast().getY(), randomGrey()));
-        theSnake.removeFirst();
-    }
-
-    private void moveRight() {
-        if (snakeDir == LEFT)
-            return;
-
-        theSnake.add(new ColorPoint(theSnake.peekLast().getX() + SQ_SIZE, theSnake.peekLast().getY(), randomGrey()));
-        theSnake.removeFirst();
-    }
-
-    private boolean moveCheck() {
-        ColorPoint snakeHead = theSnake.getLast();
-
-        for (int i = 0; i < theSnake.size() - 2; i++) {
-            if (theSnake.get(i).getX() == snakeHead.getX() && theSnake.get(i).getY() == snakeHead.getY()) {
-                return false;
-            }
-            else if (snakeHead.getX() < 0 || snakeHead.getY() < 0) {
-                return false;
-            }
-            else if (snakeHead.getX() > getWidth() - 1 || snakeHead.getY() > getHeight() - 1) {
-                return false;
-            }
-        }
-
-        ListIterator<ColorPoint> iter = powerUps.listIterator();
-        while (iter.hasNext()) {
-            ColorPoint pu = iter.next();
-
-            if (snakeHead.getX() == pu.getX() && snakeHead.getY() == pu.getY()) {
-                iter.remove();
-                theSnake.addFirst(theSnake.getFirst());
-                score += 1;
-
-                if (score % 10 == 0) {
-                    gameSpeed -= gameSpeed / 5;
-                    setSpeed(gameSpeed);
-                }
-            }
-        }
-
-        return true;
     }
 
     private void start() {
@@ -383,7 +339,7 @@ class Playground extends JPanel {
             x = r.nextInt(getWidth() / SQ_SIZE);
             y = r.nextInt(getHeight() / SQ_SIZE);
 
-            for (ColorPoint cp : theSnake) {
+            for (ColorPoint cp : snake.getBody()) {
                 if (cp.getX() == x * SQ_SIZE && cp.getY() == y * SQ_SIZE)
                     isInSnake = true;
             }
