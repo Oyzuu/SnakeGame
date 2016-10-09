@@ -2,7 +2,7 @@ package snakegame.model;
 
 import java.util.LinkedList;
 import static snakegame.controller.Playground.*;
-import static snakegame.drawutils.MyColors.randomGrey;
+import static snakegame.drawutils.AppColors.randomGrey;
 
 /**
  * Created by Gilbert on 08-10-16.

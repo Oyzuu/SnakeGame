@@ -4,9 +4,9 @@ import snakegame.model.ColorPoint;
 
 import java.util.LinkedList;
 
-import static snakegame.drawutils.MyColors.randomGrey;
+import static snakegame.drawutils.AppColors.randomGrey;
 
-final public class PixelNumbers {
+final public class AlphanumericMatrices {
     final static private int[][] NUMBER_LIST = {
         /* 0 */
         {0, 1, 0,
@@ -291,8 +291,7 @@ final public class PixelNumbers {
     }
 
     /*
-    Converts matrices returned by PixelNumbers.getInt() or getMessageMatrix()
-    into a linked list of color points
+    Converts matrices into a linked list of color points
     */
     public static LinkedList<ColorPoint> getMessagePoints(int x, int y, String message, int pixelSize) {
         int initX = x;

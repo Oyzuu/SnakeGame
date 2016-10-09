@@ -1,7 +1,6 @@
 package snakegame.controller;
 
 import snakegame.model.ColorPoint;
-import snakegame.drawutils.PixelNumbers;
 import snakegame.model.Snake;
 
 import javax.swing.*;
@@ -14,8 +13,8 @@ import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Random;
 
-import static snakegame.drawutils.MyColors.randomGrey;
-import static snakegame.drawutils.PixelNumbers.getMessagePoints;
+import static snakegame.drawutils.AppColors.randomGrey;
+import static snakegame.drawutils.AlphanumericMatrices.getMessagePoints;
 
 public class Playground extends JPanel {
     public static final int

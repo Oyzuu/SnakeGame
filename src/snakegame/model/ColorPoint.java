@@ -23,9 +23,4 @@ public class ColorPoint {
     public Color getColor() {
         return color;
     }
-
-    public String toString() {
-        return String.format("Point de coords(%s, %s) et de couleur %s",
-                             x, y, color);
-    }
 }
