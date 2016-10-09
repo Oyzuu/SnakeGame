@@ -6,15 +6,18 @@ import snakegame.model.Snake;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.Random;
 
-public class Playground extends JPanel implements Snake.SnakeHost {
+import static snakegame.drawutils.MyColors.randomGrey;
+import static snakegame.drawutils.PixelNumbers.getMessagePoints;
+
+public class Playground extends JPanel {
     public static final int
             SQ_SIZE  = 20,
             HALF_SQ  = SQ_SIZE/2,
@@ -49,42 +52,32 @@ public class Playground extends JPanel implements Snake.SnakeHost {
         init();
 
         /* Timer to control the running speed of the game */
-        ActionListener runTheGame = new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                moveSnake(snakeDirection);
-                paintComponent(getGraphics());
-            }
+        ActionListener runTheGame = e -> {
+            moveSnake(snakeDirection);
+            paintComponent(getGraphics());
         };
 
         timer = new javax.swing.Timer(gameSpeed, runTheGame);
 
         /* Timer to control power-up spawn */
-        ActionListener powerUpSpawn = new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                addPowerUp();
-            }
-        };
+        ActionListener powerUpSpawn = e -> addPowerUp();
 
         powerUpTimer = new javax.swing.Timer(20 * gameSpeed, powerUpSpawn);
 
         addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
-                if (!timer.isRunning()) {
+                if (!timer.isRunning())
                     start();
-                }
+
                 int key = e.getKeyCode();
 
-                if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_Z)
-                        && snakeDirection != DOWN)
+                if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_Z) && snakeDirection != DOWN)
                     snakeDirection = UP;
-                else if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)
-                        && snakeDirection != UP)
+                else if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && snakeDirection != UP)
                     snakeDirection = DOWN;
-                else if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_Q)
-                        && snakeDirection != RIGHT)
+                else if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_Q) && snakeDirection != RIGHT)
                     snakeDirection = LEFT;
-                else if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)
-                        && snakeDirection != LEFT)
+                else if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && snakeDirection != LEFT)
                     snakeDirection = RIGHT;
             }
         });
@@ -93,36 +86,14 @@ public class Playground extends JPanel implements Snake.SnakeHost {
     @Override
     public void paintComponent(Graphics g) {
         drawAll(g);
-        if (!snake.verifyMovement(getWidth(), getHeight(), powerUps))
+        if (!verifyMovement())
             gameOver(g);
-    }
-
-    // SnakeHost methods
-
-    @Override
-    public void incrementScore() {
-        score += 1;
-
-        if (score % 10 == 0) {
-            gameSpeed -= gameSpeed / 5;
-            setSpeed(gameSpeed);
-        }
-    }
-
-    @Override
-    public void setDirection(int direction) {
-        snakeDirection = direction;
-    }
-
-    @Override
-    public int getDirection() {
-        return snakeDirection;
     }
 
     // Methods
 
     private void init() {
-        snake = new Snake(this);
+        snake = new Snake();
         
         /* creates a list of colored points for the background */
         Random r = new Random();
@@ -151,7 +122,8 @@ public class Playground extends JPanel implements Snake.SnakeHost {
 
         /* Welcome screen at launch */
         if (!hasStarted) {
-            LinkedList<ColorPoint> welcomeList = matrix2List(SQ_SIZE, SQ_SIZE, "Welcome\nto my\nsnake\ngame", HALF_SQ);
+            LinkedList<ColorPoint> welcomeList = 
+                    getMessagePoints(SQ_SIZE, SQ_SIZE, "Welcome\nto my\nsnake\ngame", HALF_SQ);
 
             for (ColorPoint cp : welcomeList) {
                 g2dImage.setColor(randomGrey());
@@ -159,7 +131,7 @@ public class Playground extends JPanel implements Snake.SnakeHost {
             }
 
             LinkedList<ColorPoint> byAuthorList =
-                    matrix2List(SQ_SIZE, getHeight() - SQ_SIZE, "de cooman sammy, 2016", TENTH_SQ);
+                    getMessagePoints(SQ_SIZE, getHeight() - SQ_SIZE, "de cooman sammy, 2016", TENTH_SQ);
 
             for (ColorPoint cp : byAuthorList) {
                 g2dImage.setColor(randomGrey());
@@ -167,7 +139,7 @@ public class Playground extends JPanel implements Snake.SnakeHost {
             }
 
             LinkedList<ColorPoint> instructions =
-                    matrix2List(SQ_SIZE, 13 * SQ_SIZE, "Press any key to start...", QUART_SQ);
+                    getMessagePoints(SQ_SIZE, 13 * SQ_SIZE, "Press any key to start...", QUART_SQ);
 
             for (ColorPoint cp : instructions) {
                 g2dImage.setColor(randomGrey());
@@ -175,7 +147,7 @@ public class Playground extends JPanel implements Snake.SnakeHost {
             }
 
             LinkedList<ColorPoint> instructions2 =
-                    matrix2List(SQ_SIZE, 15 * SQ_SIZE, "(ZQSD or arrows as controls)", FIFTH_SQ);
+                    getMessagePoints(SQ_SIZE, 15 * SQ_SIZE, "(ZQSD or arrows as controls)", FIFTH_SQ);
 
             for (ColorPoint cp : instructions2) {
                 g2dImage.setColor(randomGrey());
@@ -192,7 +164,7 @@ public class Playground extends JPanel implements Snake.SnakeHost {
             /* Score buffered paint */
             String strScore = "" + score;
             LinkedList<ColorPoint> scoreList =
-                    matrix2List(getWidth() - (strScore.length() * (HALF_SQ * 4)), HALF_SQ, strScore, HALF_SQ);
+                    getMessagePoints(getWidth() - (strScore.length() * (HALF_SQ * 4)), HALF_SQ, strScore, HALF_SQ);
             g2dImage.setColor(new Color(0, 0, 0, 75));
 
             for (ColorPoint cp : scoreList)
@@ -210,13 +182,6 @@ public class Playground extends JPanel implements Snake.SnakeHost {
         g2d.drawImage(img, 0, 0, this);
     }
 
-    /* Random Color Generation */
-
-    private Color randomGrey() {
-        int rValue = (int)(Math.random() * 50) + 50;
-        return new Color(rValue, rValue, rValue);
-    }
-
     private void moveSnake(int direction) {
         switch(direction) {
             case UP    : snake.up();    break;
@@ -224,6 +189,41 @@ public class Playground extends JPanel implements Snake.SnakeHost {
             case DOWN  : snake.down();  break;
             case LEFT  : snake.left();  break;
         }
+    }
+
+    private boolean verifyMovement() {
+        ColorPoint head = snake.getBody().getLast();
+
+        for (int i = 0; i < snake.getBody().size() - 2; i++) {
+            if (snake.getBody().get(i).getX() == head.getX() && snake.getBody().get(i).getY() == head.getY()) {
+                return false;
+            }
+            else if (head.getX() < 0 || head.getY() < 0) {
+                return false;
+            }
+            else if (head.getX() > getWidth() - 1 || head.getY() > getHeight() - 1) {
+                return false;
+            }
+        }
+
+        ListIterator<ColorPoint> iter = powerUps.listIterator();
+        while (iter.hasNext()) {
+            ColorPoint pu = iter.next();
+
+            if (head.getX() == pu.getX() && head.getY() == pu.getY()) {
+                iter.remove();
+                snake.getBody().addFirst(snake.getBody().getFirst());
+
+                score += 1;
+
+                if (score % 10 == 0) {
+                    gameSpeed -= gameSpeed / 5;
+                    setSpeed(gameSpeed);
+                }
+            }
+        }
+
+        return true;
     }
 
     private void start() {
@@ -241,75 +241,17 @@ public class Playground extends JPanel implements Snake.SnakeHost {
         powerUpTimer.stop();
     }
 
-    /*
-    Converts matrices returned by PixelNumbers.getInt() or getString()
-    into a linked list of color points
-    */
-    private LinkedList<ColorPoint> matrix2List(
-            int x, int y, String message, int pixelSize) {
-        int initX = x;
-        LinkedList<ColorPoint> cpList = new LinkedList<ColorPoint>();
-
-        for (int[] charMatrix : PixelNumbers.getString(message)) {
-            int i = 0;
-            int j = 0;
-            int step;
-            int charWidth;
-
-            if (charMatrix.length > 20 && charMatrix.length != 1 &&
-                    charMatrix[0] != 2) {
-                step = 6;
-                charWidth = 5;
-            }
-            else {
-                step = 4;
-                charWidth = 3;
-            }
-
-            boolean newLine = false;
-            for (int p : charMatrix) {
-                if (p == 1) {
-                    cpList.add(new ColorPoint(
-                            x + (i * pixelSize), y + (j * pixelSize),
-                            randomGrey()));
-                }
-                else if (p == 3) {
-                    x = initX;
-                    y += 6 * pixelSize;
-                    newLine = true;
-                }
-
-                if (i % (charWidth - 1) == 0 && i != 0) {
-                    i = 0;
-                    j++;
-                }
-                else {
-                    i++;
-                }
-            }
-
-            if (!newLine)
-                x += step * pixelSize;
-        }
-
-        return cpList;
-    }
-
     private void gameOver(Graphics g) {
         int x = (getWidth() / 2) - 11 * SQ_SIZE;
         int y = (getHeight() / 2) - 5 * SQ_SIZE;
 
-        LinkedList<ColorPoint> gameOverCPList =
-                matrix2List(x, y, "GAME\nOVER", SQ_SIZE);
+        LinkedList<ColorPoint> gameOverCPList = getMessagePoints(x, y, "GAME\nOVER", SQ_SIZE);
 
         /* Draws the shadow of "GAME\nOVER" */
         g.setColor(new Color(0, 0, 0, 30));
         for (ColorPoint cp : gameOverCPList) {
 
-            g.fillRect(cp.getX() + SQ_SIZE,
-                    cp.getY() + SQ_SIZE,
-                    SQ_SIZE,
-                    SQ_SIZE);
+            g.fillRect(cp.getX() + SQ_SIZE,cp.getY() + SQ_SIZE, SQ_SIZE, SQ_SIZE);
         }
 
         /* draws "GAME\nOVER" */

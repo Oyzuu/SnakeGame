@@ -1,6 +1,12 @@
 package snakegame.drawutils;
 
-public class PixelNumbers {
+import snakegame.model.ColorPoint;
+
+import java.util.LinkedList;
+
+import static snakegame.drawutils.MyColors.randomGrey;
+
+final public class PixelNumbers {
     final static private int[][] NUMBER_LIST = {
         /* 0 */
         {0, 1, 0,
@@ -259,11 +265,11 @@ public class PixelNumbers {
     Does not render lowercase letters and special characters such as
     accentuated latin letters
     */
-    public static int[][] getString(String word) {
-        int[][] outputArray = new int[word.length()][];
+    private static int[][] getMessageMatrix(String message) {
+        int[][] outputArray = new int[message.length()][];
         int i = 0;
 
-        for (char c : word.toUpperCase().toCharArray()) {
+        for (char c : message.toUpperCase().toCharArray()) {
             switch(c) {
                 case 10 : outputArray[i] = LETTER_LIST[27]; break;
                 case 32 : outputArray[i] = LETTER_LIST[26]; break;
@@ -282,5 +288,55 @@ public class PixelNumbers {
             i++;
         }
         return outputArray;
+    }
+
+    /*
+    Converts matrices returned by PixelNumbers.getInt() or getMessageMatrix()
+    into a linked list of color points
+    */
+    public static LinkedList<ColorPoint> getMessagePoints(int x, int y, String message, int pixelSize) {
+        int initX = x;
+        LinkedList<ColorPoint> colorPoints = new LinkedList<>();
+
+        for (int[] charMatrix : getMessageMatrix(message)) {
+            int i = 0;
+            int j = 0;
+            int step;
+            int charWidth;
+
+            if (charMatrix.length > 20 && charMatrix.length != 1 && charMatrix[0] != 2) {
+                step = 6;
+                charWidth = 5;
+            }
+            else {
+                step = 4;
+                charWidth = 3;
+            }
+
+            boolean newLine = false;
+            for (int p : charMatrix) {
+                if (p == 1) {
+                    colorPoints.add(new ColorPoint(x + (i * pixelSize), y + (j * pixelSize), randomGrey()));
+                }
+                else if (p == 3) {
+                    x = initX;
+                    y += 6 * pixelSize;
+                    newLine = true;
+                }
+
+                if (i % (charWidth - 1) == 0 && i != 0) {
+                    i = 0;
+                    j++;
+                }
+                else {
+                    i++;
+                }
+            }
+
+            if (!newLine)
+                x += step * pixelSize;
+        }
+
+        return colorPoints;
     }
 }
