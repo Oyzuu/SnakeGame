@@ -1,57 +1,86 @@
 package snakegame.controller;
 
+import snakegame.drawutils.AppColors;
 import snakegame.model.ColorPoint;
 import snakegame.model.Snake;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
 
-import static snakegame.drawutils.AppColors.randomGrey;
 import static snakegame.drawutils.AlphanumericMatrices.getMessagePoints;
 
-public class Playground extends JPanel {
-    public static final int
-            SQ_SIZE  = 20,
-            HALF_SQ  = SQ_SIZE/2,
-            QUART_SQ = SQ_SIZE/4,
-            FIFTH_SQ = SQ_SIZE/5,
-            TENTH_SQ = SQ_SIZE/10,
+public class Playground extends JPanel implements KeyListener {
 
-            UP    =  0,
-            RIGHT =  1,
-            DOWN  =  2,
-            LEFT  =  3;
+    //region Static constants
+    public static final int SQ_SIZE = 20;
+    //endregion
 
-    private int
-            gameSpeed = 100,
-            snakeDirection = RIGHT,
-            score     = 0;
-    
+    //region Constants
+    private final int UP    = 0;
+    private final int RIGHT = 1;
+    private final int DOWN  = 2;
+    private final int LEFT  = 3;
+
+    private final int HALF_SQ  = SQ_SIZE / 2;
+    private final int QUART_SQ = SQ_SIZE / 4;
+    private final int FIFTH_SQ = SQ_SIZE / 5;
+    private final int TENTH_SQ = SQ_SIZE / 10;
+    //endregion
+
+    //region Variables
+    private List<ColorPoint>       background;
+    private LinkedList<ColorPoint> powerUps;
+    private javax.swing.Timer      timer;
+    private javax.swing.Timer      powerUpTimer;
+    private Graphics2D             graphics;
+    private BufferedImage          bufferedImage;
+
+    private int     gameSpeed      = 100;
+    private int     snakeDirection = RIGHT;
+    private int     score          = 0;
+    private boolean hasStarted     = false;
+
     private Snake snake;
+    //endregion
 
-    private boolean hasStarted = false;
-    private LinkedList<ColorPoint>
-            background = new LinkedList<>(),
-            powerUps   = new LinkedList<>();
-
-    private javax.swing.Timer timer, powerUpTimer;
-
+    //region Playground constructor, init and overrides
     Playground() {
         setSize(new Dimension(50 * SQ_SIZE, 30 * SQ_SIZE));
         setPreferredSize(new Dimension(50 * SQ_SIZE, 30 * SQ_SIZE));
         setOpaque(false);
 
+        addKeyListener(this);
+
         init();
+    }
+
+    private void init() {
+        bufferedImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
+        graphics = bufferedImage.createGraphics();
+        background = new LinkedList<>();
+        powerUps = new LinkedList<>();
+        snake = new Snake();
+
+        /* creates a list of colored points for the background */
+        final Random r = new Random();
+
+        for (int i = 0; i < getWidth() / SQ_SIZE; i++) {
+            for (int j = 0; j < getHeight() / SQ_SIZE; j++) {
+                final Color rColor = new Color(150, 200, r.nextInt(100) + 150);
+                background.add(new ColorPoint(i * SQ_SIZE, j * SQ_SIZE, rColor));
+            }
+        }
 
         /* Timer to control the running speed of the game */
-        ActionListener runTheGame = e -> {
+        final ActionListener runTheGame = e -> {
             moveSnake(snakeDirection);
             paintComponent(getGraphics());
         };
@@ -59,139 +88,158 @@ public class Playground extends JPanel {
         timer = new javax.swing.Timer(gameSpeed, runTheGame);
 
         /* Timer to control power-up spawn */
-        ActionListener powerUpSpawn = e -> addPowerUp();
+        final ActionListener powerUpSpawn = e -> addPowerUp();
 
         powerUpTimer = new javax.swing.Timer(20 * gameSpeed, powerUpSpawn);
-
-        addKeyListener(new KeyAdapter() {
-            public void keyPressed(KeyEvent e) {
-                if (!timer.isRunning())
-                    start();
-
-                int key = e.getKeyCode();
-
-                if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_Z) && snakeDirection != DOWN)
-                    snakeDirection = UP;
-                else if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && snakeDirection != UP)
-                    snakeDirection = DOWN;
-                else if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_Q) && snakeDirection != RIGHT)
-                    snakeDirection = LEFT;
-                else if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && snakeDirection != LEFT)
-                    snakeDirection = RIGHT;
-            }
-        });
     }
 
     @Override
-    public void paintComponent(Graphics g) {
+    public void paintComponent(final Graphics g) {
         drawAll(g);
-        if (!verifyMovement())
-            gameOver(g);
+
+        if (!verifyMovement()) {
+            drawGameOver();
+            stop();
+        }
+    }
+    //endregion
+
+    //region KeyListener
+    @Override
+    public void keyTyped(final KeyEvent e) {
     }
 
-    // Methods
+    @Override
+    public void keyPressed(final KeyEvent e) {
+        if (!timer.isRunning()) {
+            start();
+        }
 
-    private void init() {
-        snake = new Snake();
-        
-        /* creates a list of colored points for the background */
-        Random r = new Random();
+        final int key = e.getKeyCode();
 
-        for (int i = 0; i < getWidth()/SQ_SIZE; i++) {
-            for (int j = 0; j < getHeight()/SQ_SIZE; j++) {
-                Color rColor = new Color(150, 200, r.nextInt(100) + 150);
-                background.add(new ColorPoint(
-                        i*SQ_SIZE, j*SQ_SIZE, rColor));
-            }
+        if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_Z) && snakeDirection != DOWN) {
+            snakeDirection = UP;
+        }
+        else if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && snakeDirection != UP) {
+            snakeDirection = DOWN;
+        }
+        else if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_Q) && snakeDirection != RIGHT) {
+            snakeDirection = LEFT;
+        }
+        else if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && snakeDirection != LEFT) {
+            snakeDirection = RIGHT;
         }
     }
 
-    private void drawAll(Graphics g) {
-        BufferedImage img = new BufferedImage(getWidth(), getHeight(),
-                BufferedImage.TYPE_INT_ARGB);
+    @Override
+    public void keyReleased(final KeyEvent e) {
+    }
+    //endregion
 
-        Graphics2D g2dImage = img.createGraphics();
+    //region Draw methods
+    private void drawAll(final Graphics g) {
 
         /* Background buffered paint */
-        for (ColorPoint cp : background) {
-            g2dImage.setColor(cp.getColor());
-            g2dImage.fillRect(cp.getX(), cp.getY(),
-                    SQ_SIZE, SQ_SIZE);
+        for (final ColorPoint colorPoint : background) {
+            graphics.setColor(colorPoint.getColor());
+            graphics.fillRect(colorPoint.getX(), colorPoint.getY(), SQ_SIZE, SQ_SIZE);
         }
 
         /* Welcome screen at launch */
         if (!hasStarted) {
-            LinkedList<ColorPoint> welcomeList = 
-                    getMessagePoints(SQ_SIZE, SQ_SIZE, "Welcome\nto my\nsnake\ngame", HALF_SQ);
-
-            for (ColorPoint cp : welcomeList) {
-                g2dImage.setColor(randomGrey());
-                g2dImage.fillRect(cp.getX(), cp.getY(), HALF_SQ, HALF_SQ);
-            }
-
-            LinkedList<ColorPoint> byAuthorList =
-                    getMessagePoints(SQ_SIZE, getHeight() - SQ_SIZE, "de cooman sammy, 2016", TENTH_SQ);
-
-            for (ColorPoint cp : byAuthorList) {
-                g2dImage.setColor(randomGrey());
-                g2dImage.fillRect(cp.getX(), cp.getY(), TENTH_SQ, TENTH_SQ);
-            }
-
-            LinkedList<ColorPoint> instructions =
-                    getMessagePoints(SQ_SIZE, 13 * SQ_SIZE, "Press any key to start...", QUART_SQ);
-
-            for (ColorPoint cp : instructions) {
-                g2dImage.setColor(randomGrey());
-                g2dImage.fillRect(cp.getX(), cp.getY(), QUART_SQ, QUART_SQ);
-            }
-
-            LinkedList<ColorPoint> instructions2 =
-                    getMessagePoints(SQ_SIZE, 15 * SQ_SIZE, "(ZQSD or arrows as controls)", FIFTH_SQ);
-
-            for (ColorPoint cp : instructions2) {
-                g2dImage.setColor(randomGrey());
-                g2dImage.fillRect(cp.getX(), cp.getY(), FIFTH_SQ, FIFTH_SQ);
-            }
+            drawText("Welcome\nto my\nsnake\ngame", SQ_SIZE, SQ_SIZE, HALF_SQ);
+            drawText("de cooman sammy, 2016", SQ_SIZE, getHeight() - SQ_SIZE, TENTH_SQ);
+            drawText("Press any key to start...", SQ_SIZE, 13 * SQ_SIZE, QUART_SQ);
+            drawText("(ZQSD or arrows as controls)", SQ_SIZE, 15 * SQ_SIZE, FIFTH_SQ);
         }
         else {
             /* Snake buffered paint */
-            for (ColorPoint cp : snake.getBody()) {
-                g2dImage.setColor(cp.getColor().brighter());
-                g2dImage.fillRect(cp.getX(), cp.getY(), SQ_SIZE, SQ_SIZE);
+            for (final ColorPoint colorPoint : snake.getBody()) {
+                graphics.setColor(colorPoint.getColor().brighter());
+                graphics.fillRect(colorPoint.getX(), colorPoint.getY(), SQ_SIZE, SQ_SIZE);
             }
 
-            /* Score buffered paint */
-            String strScore = "" + score;
-            LinkedList<ColorPoint> scoreList =
-                    getMessagePoints(getWidth() - (strScore.length() * (HALF_SQ * 4)), HALF_SQ, strScore, HALF_SQ);
-            g2dImage.setColor(new Color(0, 0, 0, 75));
-
-            for (ColorPoint cp : scoreList)
-                g2dImage.fillRect( cp.getX(), cp.getY(), HALF_SQ, HALF_SQ);
-
-            /* Power-ups buffered paint */
-            g2dImage.setColor(new Color(255, 150, 0));
-
-            for (ColorPoint pu : powerUps)
-                g2dImage.fillRect(pu.getX(), pu.getY(), SQ_SIZE, SQ_SIZE);
+            drawScore();
+            drawPowerUps();
         }
 
         /* Paint the buffer onto the panel */
-        Graphics2D g2d = (Graphics2D)g;
-        g2d.drawImage(img, 0, 0, this);
+        final Graphics2D g2d = (Graphics2D) g;
+        g2d.drawImage(bufferedImage, 0, 0, this);
     }
 
-    private void moveSnake(int direction) {
-        switch(direction) {
-            case UP    : snake.up();    break;
-            case RIGHT : snake.right(); break;
-            case DOWN  : snake.down();  break;
-            case LEFT  : snake.left();  break;
+    private void drawScore() {
+        final String scoreAsString = Integer.toString(score);
+        final LinkedList<ColorPoint> scoreList =
+                getMessagePoints(getWidth() - (scoreAsString.length() * (HALF_SQ * 4)), HALF_SQ, scoreAsString, HALF_SQ);
+
+        graphics.setColor(new Color(0, 0, 0, 75));
+        drawPointsFromListWithSize(scoreList, HALF_SQ);
+    }
+
+    private void drawPowerUps() {
+        graphics.setColor(new Color(255, 150, 0));
+        drawPointsFromListWithSize(powerUps, SQ_SIZE);
+    }
+
+    private void drawText(final String text, final int x, final int y, final int pixelSize) {
+        final LinkedList<ColorPoint> instructions = getMessagePoints(x, y, text, pixelSize);
+
+        for (final ColorPoint cp : instructions) {
+            graphics.setColor(AppColors.randomGrey());
+            graphics.fillRect(cp.getX(), cp.getY(), pixelSize, pixelSize);
+        }
+    }
+
+    private void drawPointsFromListWithSize(final List<ColorPoint> list, final int pixelSize) {
+        for (final ColorPoint cp : list) {
+            graphics.fillRect(cp.getX(), cp.getY(), pixelSize, pixelSize);
+        }
+    }
+
+    private void drawGameOver() {
+        final Graphics graphics = getGraphics();
+        final int      x        = (getWidth() / 2) - 11 * SQ_SIZE;
+        final int      y        = (getHeight() / 2) - 5 * SQ_SIZE;
+
+        final LinkedList<ColorPoint> gameOverCPList = getMessagePoints(x, y, "GAME\nOVER", SQ_SIZE);
+
+        /* Draws the shadow of "GAME\nOVER" */
+        graphics.setColor(new Color(0, 0, 0, 30));
+        for (final ColorPoint cp : gameOverCPList) {
+            graphics.fillRect(cp.getX() + SQ_SIZE, cp.getY() + SQ_SIZE, SQ_SIZE, SQ_SIZE);
+        }
+
+        /* draws "GAME\nOVER" */
+        for (final ColorPoint cp : gameOverCPList) {
+            graphics.setColor(cp.getColor().darker());
+            graphics.fillRect(cp.getX(), cp.getY(), SQ_SIZE, SQ_SIZE);
+        }
+
+        stop();
+    }
+    //endregion
+
+    //region Snake movement
+    private void moveSnake(final int direction) {
+        switch (direction) {
+            case UP:
+                snake.up();
+                break;
+            case RIGHT:
+                snake.right();
+                break;
+            case DOWN:
+                snake.down();
+                break;
+            case LEFT:
+                snake.left();
+                break;
         }
     }
 
     private boolean verifyMovement() {
-        ColorPoint head = snake.getBody().getLast();
+        final ColorPoint head = snake.getBody().getLast();
 
         for (int i = 0; i < snake.getBody().size() - 2; i++) {
             if (snake.getBody().get(i).getX() == head.getX() && snake.getBody().get(i).getY() == head.getY()) {
@@ -205,9 +253,9 @@ public class Playground extends JPanel {
             }
         }
 
-        ListIterator<ColorPoint> iter = powerUps.listIterator();
+        final ListIterator<ColorPoint> iter = powerUps.listIterator();
         while (iter.hasNext()) {
-            ColorPoint pu = iter.next();
+            final ColorPoint pu = iter.next();
 
             if (head.getX() == pu.getX() && head.getY() == pu.getY()) {
                 iter.remove();
@@ -224,46 +272,22 @@ public class Playground extends JPanel {
 
         return true;
     }
+    //endregion
 
+    //region Game state
     private void start() {
-        if (!timer.isRunning()) {
-            System.out.println("Timer starts");
-            hasStarted = true;
-            timer.start();
-            powerUpTimer.start();
+        System.out.println("Timer starts");
+        hasStarted = true;
+        timer.start();
+        powerUpTimer.start();
+    }
 
-            return;
-        }
-
-        System.out.println("Timer stops");
+    private void stop() {
         timer.stop();
         powerUpTimer.stop();
     }
 
-    private void gameOver(Graphics g) {
-        int x = (getWidth() / 2) - 11 * SQ_SIZE;
-        int y = (getHeight() / 2) - 5 * SQ_SIZE;
-
-        LinkedList<ColorPoint> gameOverCPList = getMessagePoints(x, y, "GAME\nOVER", SQ_SIZE);
-
-        /* Draws the shadow of "GAME\nOVER" */
-        g.setColor(new Color(0, 0, 0, 30));
-        for (ColorPoint cp : gameOverCPList) {
-
-            g.fillRect(cp.getX() + SQ_SIZE,cp.getY() + SQ_SIZE, SQ_SIZE, SQ_SIZE);
-        }
-
-        /* draws "GAME\nOVER" */
-        for (ColorPoint cp : gameOverCPList) {
-            g.setColor(cp.getColor().darker());
-            g.fillRect(cp.getX(), cp.getY(), SQ_SIZE, SQ_SIZE);
-        }
-
-        timer.stop();
-        powerUpTimer.stop();
-    }
-
-    private void setSpeed(int speed) {
+    private void setSpeed(final int speed) {
         timer.setDelay(speed);
         timer.setInitialDelay(speed);
         powerUpTimer.setDelay(speed * 20);
@@ -271,22 +295,22 @@ public class Playground extends JPanel {
     }
 
     private void addPowerUp() {
-        boolean isInSnake;
-        int x, y;
-        Random r = new Random();
+        boolean      isInSnake;
+        int          x, y;
+        final Random r = new Random();
 
         while (true) {
             isInSnake = false;
             x = r.nextInt(getWidth() / SQ_SIZE);
             y = r.nextInt(getHeight() / SQ_SIZE);
 
-            for (ColorPoint cp : snake.getBody()) {
-                if (cp.getX() == x * SQ_SIZE && cp.getY() == y * SQ_SIZE)
+            for (final ColorPoint cp : snake.getBody()) {
+                if (cp.getX() == x * SQ_SIZE && cp.getY() == y * SQ_SIZE) {
                     isInSnake = true;
+                }
             }
 
-            if (!isInSnake)
-                break;
+            if (!isInSnake) break;
         }
 
         if (powerUps.size() == 2) {
@@ -295,4 +319,6 @@ public class Playground extends JPanel {
 
         powerUps.add(new ColorPoint(x * SQ_SIZE, y * SQ_SIZE, Color.orange));
     }
+    //endregion
+
 }
